@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>OmniAgent | Multi-Model Council</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* iOS friendly rubber-band and height fixes */
+    html, body { height: 100%; height: -webkit-fill-available; }
+    .chat-container { height: calc(100vh - 140px); }
+    @supports (-webkit-touch-callout: none) {
+      .chat-container { height: calc(100svh - 140px); }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans flex flex-col antialiased select-none">
+
+  <!-- Mobile Top Bar -->
+  <header class="bg-slate-800/90 backdrop-blur-md border-b border-slate-700/80 px-4 py-3 sticky top-0 z-20 flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 flex items-center justify-center font-bold text-white shadow-sm">
+        Ω
+      </div>
+      <div>
+        <div class="flex items-center gap-1.5">
+          <h1 class="text-sm font-bold text-white tracking-tight">OmniAgent</h1>
+          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800/80">
+            24/7 ONLINE
+          </span>
+        </div>
+        <p class="text-[10px] text-slate-400">Claude • Gemini • GPT • Qwen • Kimi</p>
+      </div>
+    </div>
+
+    <!-- Mode Selector & Auth Settings -->
+    <div class="flex items-center gap-2">
+      <select id="mode-select" class="bg-slate-700 text-slate-200 border border-slate-600 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-violet-500 font-medium">
+        <option value="auto">🧠 Auto-Router</option>
+        <option value="council">👥 Full Council</option>
+        <option value="claude">🏛️ Claude 3.5</option>
+        <option value="gemini">⚡ Gemini 2.5</option>
+        <option value="chatgpt">🛠️ GPT-4o</option>
+        <option value="qwen">🧮 Qwen 2.5</option>
+        <option value="kimi">📜 Kimi k3</option>
+      </select>
+      <button id="auth-btn" class="p-1.5 rounded-lg bg-slate-700 text-slate-300 hover:text-white" title="Settings / PIN">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Live Model Readiness Strip -->
+  <div class="bg-slate-800/40 border-b border-slate-800 px-4 py-1.5 flex items-center justify-between text-[11px] overflow-x-auto gap-3 text-slate-400">
+    <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Claude</span>
+    <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Gemini</span>
+    <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> ChatGPT</span>
+    <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Qwen</span>
+    <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Kimi</span>
+    <button id="clear-btn" class="ml-auto text-[10px] text-slate-400 hover:text-rose-400 underline">Clear Context</button>
+  </div>
+
+  <!-- Chat History Stream -->
+  <main id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 chat-container">
+    <!-- Welcome message -->
+    <div class="flex items-start gap-2.5 max-w-[92%]">
+      <div class="w-7 h-7 rounded-lg bg-violet-600 text-white flex-shrink-0 flex items-center justify-center font-bold text-xs mt-0.5">
+        Ω
+      </div>
+      <div>
+        <div class="bg-slate-800/90 border border-slate-700/80 rounded-2xl rounded-tl-sm p-3.5 text-xs text-slate-200 leading-relaxed shadow-sm">
+          👋 <strong>Multi-Agent Collective Online.</strong><br>
+          Send any question from your phone. The <strong>Smart Router</strong> will automatically assign it to the ideal specialist (or type <code class="bg-slate-900 px-1 py-0.5 rounded text-amber-300">council</code> to invoke all 5 models together).
+        </div>
+        <span class="text-[9px] text-slate-500 mt-1 block">Unified Orchestrator</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- Quick Prompts (Mobile Friendly) -->
+  <div class="px-3 py-1.5 bg-slate-900/90 flex gap-2 overflow-x-auto text-xs whitespace-nowrap scrollbar-none border-t border-slate-800">
+    <button class="quick-chip bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-2.5 py-1 rounded-full text-[11px]" data-text="council: Evaluate the best cloud database architecture for a high-traffic mobile app">
+      👥 Council: Best Cloud DB
+    </button>
+    <button class="quick-chip bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-2.5 py-1 rounded-full text-[11px]" data-text="Write an optimized Python script to scrape live currency rates">
+      🧮 Code: Python Scraper
+    </button>
+    <button class="quick-chip bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-2.5 py-1 rounded-full text-[11px]" data-text="Explain quantum computing principles with a simple college analogy">
+      🏛️ Explain: Quantum Computing
+    </button>
+  </div>
+
+  <!-- Mobile Bottom Chat Input -->
+  <footer class="p-3 bg-slate-800/90 border-t border-slate-700/80 pb-safe">
+    <form id="chat-form" class="flex items-center gap-2">
+      <input type="text" id="user-input" placeholder="Ask your multi-agent collective..." class="flex-1 bg-slate-900 border border-slate-700 focus:border-violet-500 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none">
+      <button type="submit" id="send-btn" class="bg-violet-600 hover:bg-violet-500 text-white font-medium p-2.5 rounded-xl transition-colors shadow-sm flex items-center justify-center">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+        </svg>
+      </button>
+    </form>
+  </footer>
+
+  <!-- Auth / Settings Modal -->
+  <div id="auth-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-xs w-full p-5 space-y-4">
+      <h3 class="text-sm font-bold text-white">Campus Security Key</h3>
+      <p class="text-xs text-slate-400">If your server is protected with a SECRET_KEY, enter it below to authorize this mobile browser.</p>
+      <input type="password" id="auth-token-input" placeholder="Secret Token / PIN" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500">
+      <div class="flex justify-end gap-2">
+        <button id="auth-cancel-btn" class="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white">Cancel</button>
+        <button id="auth-save-btn" class="px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold">Save Key</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const chatMessages = document.getElementById('chat-messages');
+    const chatForm = document.getElementById('chat-form');
+    const userInput = document.getElementById('user-input');
+    const modeSelect = document.getElementById('mode-select');
+    const clearBtn = document.getElementById('clear-btn');
+    const sendBtn = document.getElementById('send-btn');
+    const authBtn = document.getElementById('auth-btn');
+    const authModal = document.getElementById('auth-modal');
+    const authSaveBtn = document.getElementById('auth-save-btn');
+    const authCancelBtn = document.getElementById('auth-cancel-btn');
+    const authTokenInput = document.getElementById('auth-token-input');
+
+    let sessionId = localStorage.getItem('omni_session_id') || ('mobile_' + Math.random().toString(36).substring(2, 9));
+    localStorage.setItem('omni_session_id', sessionId);
+    let authToken = localStorage.getItem('omni_auth_token') || '';
+
+    authBtn.addEventListener('click', () => {
+      authTokenInput.value = authToken;
+      authModal.classList.remove('hidden');
+    });
+    authCancelBtn.addEventListener('click', () => authModal.classList.add('hidden'));
+    authSaveBtn.addEventListener('click', () => {
+      authToken = authTokenInput.value.trim();
+      localStorage.setItem('omni_auth_token', authToken);
+      authModal.classList.add('hidden');
+    });
+
+    modeSelect.addEventListener('change', async () => {
+      const mode = modeSelect.value;
+      try {
+        await fetch('/api/mode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, mode: mode })
+        });
+      } catch (e) {}
+    });
+
+    clearBtn.addEventListener('click', async () => {
+      await fetch(`/api/clear?session_id=${sessionId}`, { method: 'POST' });
+      chatMessages.innerHTML = `
+        <div class="flex items-start gap-2.5 max-w-[92%]">
+          <div class="w-7 h-7 rounded-lg bg-violet-600 text-white flex-shrink-0 flex items-center justify-center font-bold text-xs mt-0.5">Ω</div>
+          <div>
+            <div class="bg-slate-800/90 border border-slate-700/80 rounded-2xl rounded-tl-sm p-3.5 text-xs text-slate-200 shadow-sm">
+              Context memory cleared. The multi-agent collective is ready for a new topic!
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    function appendMessage(role, text, agentUsed, metadata) {
+      const wrap = document.createElement('div');
+      wrap.className = `flex items-start gap-2.5 ${role === 'user' ? 'justify-end' : 'max-w-[92%]'}`;
+
+      if (role === 'user') {
+        wrap.innerHTML = `
+          <div class="max-w-[85%]">
+            <div class="bg-violet-600 text-white rounded-2xl rounded-tr-sm px-3.5 py-2 text-xs shadow-sm">
+              ${escapeHtml(text)}
+            </div>
+            <span class="text-[9px] text-slate-500 mt-1 block text-right">You</span>
+          </div>
+        `;
+      } else {
+        const isCouncil = agentUsed && agentUsed.includes('council');
+        let detailsHtml = '';
+
+        if (metadata && metadata.council) {
+          const c = metadata.council;
+          detailsHtml = `
+            <div class="mt-2.5 pt-2 border-t border-slate-700/60 text-[10px] text-slate-400">
+              <div class="flex items-center justify-between font-mono">
+                <span>Council: ${c.models_consulted.length} models</span>
+                <span>${c.total_pipeline_latency_ms}ms</span>
+              </div>
+              <div class="mt-1 flex flex-wrap gap-1">
+                ${c.models_consulted.map(m => `<span class="bg-slate-900/80 px-1.5 py-0.5 rounded text-violet-300 border border-slate-700">${m}</span>`).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        wrap.innerHTML = `
+          <div class="w-7 h-7 rounded-lg ${isCouncil ? 'bg-gradient-to-tr from-amber-500 to-violet-600' : 'bg-slate-700'} text-white flex-shrink-0 flex items-center justify-center font-bold text-xs mt-0.5 shadow-sm">
+            ${isCouncil ? '👥' : '🤖'}
+          </div>
+          <div class="max-w-[88%]">
+            <div class="bg-slate-800/95 border border-slate-700/80 rounded-2xl rounded-tl-sm p-3.5 text-xs text-slate-200 leading-relaxed shadow-sm">
+              ${formatMarkdown(text)}
+              ${detailsHtml}
+            </div>
+            <span class="text-[9px] text-slate-500 mt-1 block">Unit: <code class="text-violet-400">${agentUsed || 'agent'}</code></span>
+          </div>
+        `;
+      }
+
+      chatMessages.appendChild(wrap);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement('div');
+      d.innerText = str;
+      return d.innerHTML;
+    }
+
+    function formatMarkdown(str) {
+      return escapeHtml(str)
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code class="bg-slate-900 px-1 py-0.5 rounded font-mono text-[11px] text-amber-300">$1</code>');
+    }
+
+    chatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      userInput.value = '';
+      sendBtn.disabled = true;
+
+      appendMessage('user', message);
+
+      // Loading bubble
+      const loadingWrap = document.createElement('div');
+      loadingWrap.id = 'loading-bubble';
+      loadingWrap.className = 'flex items-start gap-2.5 max-w-[92%]';
+      loadingWrap.innerHTML = `
+        <div class="w-7 h-7 rounded-lg bg-violet-600 text-white flex-shrink-0 flex items-center justify-center font-bold text-xs animate-pulse">Ω</div>
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl rounded-tl-sm p-3 text-xs text-slate-400 italic">
+          Multi-agent collective synthesizing...
+        </div>
+      `;
+      chatMessages.appendChild(loadingWrap);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      try {
+        const resp = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: sessionId,
+            message: message,
+            mode: modeSelect.value,
+            auth_token: authToken
+          })
+        });
+
+        loadingWrap.remove();
+
+        if (!resp.ok) {
+          const err = await resp.json();
+          appendMessage('assistant', `⚠️ Error: ${err.detail || 'Service unavailable'}`, 'error');
+        } else {
+          const data = await resp.json();
+          appendMessage('assistant', data.response, data.agent_used, data.metadata);
+        }
+      } catch (err) {
+        loadingWrap.remove();
+        appendMessage('assistant', `⚠️ Network error: Could not reach multi-agent server.`, 'network_error');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
+
+    document.querySelectorAll('.quick-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        userInput.value = btn.getAttribute('data-text');
+        chatForm.dispatchEvent(new Event('submit'));
+      });
+    });
+  </script>
+</body>
+</html>

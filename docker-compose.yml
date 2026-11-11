@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  omniagent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: omni_agent_collective
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DATABASE_PATH=/app/data/multi_agent.db
+      - SECRET_KEY=${SECRET_KEY:-your-secure-campus-pin-2026}
+      # Telegram Bot for Mobile Access
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS}
+      # AI Model Provider Keys (or single OpenRouter key)
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - MOONSHOT_API_KEY=${MOONSHOT_API_KEY}
+    volumes:
+      - omni_data:/app/data
+
+volumes:
+  omni_data:
